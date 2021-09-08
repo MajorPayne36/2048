@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { message } from 'antd';
 
 import {
     getEmptyBoard,
@@ -22,9 +23,9 @@ const GameController = () => {
 
     const checkEndGame = () => {
         if (checkWin(board)) {
-            console.log("You win!");
+            message.success("You win!");
         } else if (isOver(board)) {
-            console.log("Game over!");
+            message.error("Game over!");
         }
     };
 

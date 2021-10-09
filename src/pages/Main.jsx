@@ -14,23 +14,23 @@ export default function Main() {
 
     const columns = [
         {
-            title: 'Name',
+            title: 'Название комнаты',
             dataIndex: 'name',
             key: 'name'
         },
         {
-            title: 'Count',
+            title: 'Количество',
             dataIndex: 'count',
             key: 'count'
         },
         {
-            title: 'join',
+            title: 'Действие',
             dataIndex: 'join',
             key: 'join',
             render: (text, record) => (
                 <Space size="middle">
                     <Button ghost type='primary' onClick={() => {
-                        history.push(`/room/${record.name}`);
+                        history.push(`/2048/room/${record.name}`);
                     }}>Войти в комнату</Button>
                 </Space>
             )
@@ -58,12 +58,12 @@ export default function Main() {
 
     return (
         <div ref={rootNode}>
-            <h1>Available Rooms</h1>
-            <Table dataSource={dataSource} columns={columns} />;
+            <h1>Доступные комнаты</h1>
+            <Table dataSource={dataSource} columns={columns} />
 
-            <Button onClick={() => {
-                history.push(`/room/${v4()}`);
-            }}>Create New Room</Button>
+            <Button type="primary" onClick={() => {
+                history.push(`/2048/room/${v4()}`);
+            }}>Создать новую комнату</Button>
         </div>
     );
 }

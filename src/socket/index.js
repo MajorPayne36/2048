@@ -7,6 +7,6 @@ const options = {
   transports : ["websocket"]
 }
 
-const socket = io('ws://localhost:3001', options);
+const socket = io('wss://video-guru-app-server.herokuapp.com', options);
 
 export default socket;

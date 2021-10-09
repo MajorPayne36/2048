@@ -1,10 +1,12 @@
-import {useEffect, useRef, useCallback} from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import freeice from 'freeice';
 import useStateWithCallback from './useStateWithCallback';
 import socket from '../socket';
 import ACTIONS from '../socket/Actions';
+import { message } from 'antd';
 
 export const LOCAL_VIDEO = 'LOCAL_VIDEO';
+export const LOCAL_AUDIO = 'LOCAL_AUDIO';
 
 
 export default function useWebRTC(roomID) {
@@ -22,12 +24,15 @@ export default function useWebRTC(roomID) {
 
   const peerConnections = useRef({});
   const localMediaStream = useRef(null);
+  const localVideoStream = useRef(null);
+  const localAudioStream = useRef(null);
   const peerMediaElements = useRef({
     [LOCAL_VIDEO]: null,
+    [LOCAL_AUDIO]: null
   });
 
   useEffect(() => {
-    async function handleNewPeer({peerID, createOffer}) {
+    async function handleNewPeer({ peerID, createOffer }) {
       if (peerID in peerConnections.current) {
         return console.warn(`Already connected to peer ${peerID}`);
       }
@@ -46,7 +51,7 @@ export default function useWebRTC(roomID) {
       }
 
       let tracksNumber = 0;
-      peerConnections.current[peerID].ontrack = ({streams: [remoteStream]}) => {
+      peerConnections.current[peerID].ontrack = ({ streams: [remoteStream] }) => {
         tracksNumber++
 
         if (tracksNumber === 1) { // video & audio tracks received
@@ -72,9 +77,20 @@ export default function useWebRTC(roomID) {
         }
       }
 
-      localMediaStream.current.getTracks().forEach(track => {
-        peerConnections.current[peerID].addTrack(track, localMediaStream.current);
-      });
+      if (localAudioStream.current) {
+        localAudioStream.current.getTracks().forEach(track => {
+          peerConnections.current[peerID].addTrack(track, localAudioStream.current);
+        });
+      }
+      if (localVideoStream.current) {
+        localVideoStream.current.getTracks().forEach(track => {
+          peerConnections.current[peerID].addTrack(track, localVideoStream.current);
+        });
+      }
+
+      // localMediaStream.current.getTracks().forEach(track => {
+      //   peerConnections.current[peerID].addTrack(track, localMediaStream.current);
+      // });
 
       if (createOffer) {
         const offer = await peerConnections.current[peerID].createOffer();
@@ -96,7 +112,7 @@ export default function useWebRTC(roomID) {
   }, []);
 
   useEffect(() => {
-    async function setRemoteMedia({peerID, sessionDescription: remoteDescription}) {
+    async function setRemoteMedia({ peerID, sessionDescription: remoteDescription }) {
       await peerConnections.current[peerID]?.setRemoteDescription(
         new RTCSessionDescription(remoteDescription)
       );
@@ -121,7 +137,7 @@ export default function useWebRTC(roomID) {
   }, []);
 
   useEffect(() => {
-    socket.on(ACTIONS.ICE_CANDIDATE, ({peerID, iceCandidate}) => {
+    socket.on(ACTIONS.ICE_CANDIDATE, ({ peerID, iceCandidate }) => {
       peerConnections.current[peerID]?.addIceCandidate(
         new RTCIceCandidate(iceCandidate)
       );
@@ -133,7 +149,7 @@ export default function useWebRTC(roomID) {
   }, []);
 
   useEffect(() => {
-    const handleRemovePeer = ({peerID}) => {
+    const handleRemovePeer = ({ peerID }) => {
       if (peerConnections.current[peerID]) {
         peerConnections.current[peerID].close();
       }
@@ -153,27 +169,57 @@ export default function useWebRTC(roomID) {
 
   useEffect(() => {
     async function startCapture() {
-      localMediaStream.current = await navigator.mediaDevices.getUserMedia({
+      // localMediaStream.current = await navigator.mediaDevices.getUserMedia({
+      //   audio: true,
+      //   video: true
+      // }).catch(err => {
+      //   message.error("Не можем получить доступ к устройствам пользователя");
+      //   console.error(err.name + ": " + err.message);
+      // });
+
+      localAudioStream.current = await navigator.mediaDevices.getUserMedia({
         audio: true
+      }).catch(err => {
+        message.error("Устройство звука не найдено");
+        console.error(err.name + ": " + err.message);
+      });
+
+      localVideoStream.current = await navigator.mediaDevices.getUserMedia({
+        video: true
+      }).catch(err => {
+        message.error("Виеокамера не обнаружено");
+        console.error(err.name + ": " + err.message);
       });
 
       addNewClient(LOCAL_VIDEO, () => {
         const localVideoElement = peerMediaElements.current[LOCAL_VIDEO];
+        const localAudioElement = peerMediaElements.current[LOCAL_AUDIO];
 
         if (localVideoElement) {
           localVideoElement.volume = 0;
-          localVideoElement.srcObject = localMediaStream.current;
+          localVideoElement.srcObject = localVideoStream.current;
+        }
+        if (localAudioElement) {
+          localAudioElement.volume = 0;
+          localAudioElement.srcObject = localAudioStream.current;
         }
       });
     }
 
     startCapture()
-      .then(() => socket.emit(ACTIONS.JOIN, {room: roomID}))
+      .then(() => socket.emit(ACTIONS.JOIN, { room: roomID }))
       .catch(e => console.error('Error getting userMedia:', e));
 
     return () => {
-      localMediaStream.current.getTracks().forEach(track => track.stop());
 
+
+      if (localAudioStream.current) {
+        localAudioStream.current.getTracks().forEach(track => track.stop());
+      }
+      
+      if (localVideoStream.current) {
+        localVideoStream.current.getTracks().forEach(track => track.stop());
+      }
       socket.emit(ACTIONS.LEAVE);
     };
   }, [roomID]);

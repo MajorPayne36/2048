@@ -13,7 +13,7 @@ jobs:
       - uses: akhileshns/heroku-deploy@v3.12.12 # This is the action
         with:
           heroku_api_key: ${{secrets.HEROKU_API_KEY}}
-          heroku_app_name: "VideoGuruAppServer" #Must be unique in Heroku
+          heroku_app_name: "video-guru-app-server" #Must be unique in Heroku
           heroku_email: "ando0000.grig0ryan@yandex.ru"
           usedocker: true
           appdir: "server_api"
